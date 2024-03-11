@@ -107,6 +107,7 @@
                 var start = data[i-1];
                 var end = data[i];
                 var distance = getDistance(start[0], start[1], end[0], end[1]);
+                // var distance = getDistanceVincenty(start[0], start[1], end[0], end[1]);
                 var elevationChange = end[2] - start[2];
                 var gradient = Math.atan(elevationChange / distance) * (180 / Math.PI);
                 segments.push({
@@ -137,6 +138,53 @@
             var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
             return R * c; // in meters
+        }
+
+        function getDistanceVincenty(lat1, lon1, lat2, lon2) {
+            var a = 6378137; // 地球の長半径 (meters)
+            var f = 1 / 298.257223563; // 地球の扁平率 (WGS-84)
+            var b = (1 - f) * a;
+            var L = (lon2 - lon1) * Math.PI / 180;
+
+            var U1 = Math.atan((1 - f) * Math.tan(lat1 * Math.PI / 180));
+            var U2 = Math.atan((1 - f) * Math.tan(lat2 * Math.PI / 180));
+
+            var sinU1 = Math.sin(U1), cosU1 = Math.cos(U1);
+            var sinU2 = Math.sin(U2), cosU2 = Math.cos(U2);
+
+            var lambda = L, lambdaP, iterLimit = 100;
+            var sinLambda, cosLambda, sinSigma, cosSigma, sigma, sinAlpha, cosSqAlpha, cos2SigmaM, C;
+            do {
+                sinLambda = Math.sin(lambda);
+                cosLambda = Math.cos(lambda);
+                sinSigma = Math.sqrt((cosU2 * sinLambda) * (cosU2 * sinLambda) + 
+                                    (cosU1 * sinU2 - sinU1 * cosU2 * cosLambda) * 
+                                    (cosU1 * sinU2 - sinU1 * cosU2 * cosLambda));
+                if (sinSigma == 0) return 0; // 同じ点
+
+                cosSigma = sinU1 * sinU2 + cosU1 * cosU2 * cosLambda;
+                sigma = Math.atan2(sinSigma, cosSigma);
+                sinAlpha = cosU1 * cosU2 * sinLambda / sinSigma;
+                cosSqAlpha = 1 - sinAlpha * sinAlpha;
+                cos2SigmaM = cosSigma - 2 * sinU1 * sinU2 / cosSqAlpha;
+                if (isNaN(cos2SigmaM)) cos2SigmaM = 0; // 赤道上の場合
+                C = f / 16 * cosSqAlpha * (4 + f * (4 - 3 * cosSqAlpha));
+                lambdaP = lambda;
+                lambda = L + (1 - C) * f * sinAlpha *
+                        (sigma + C * sinSigma * (cos2SigmaM + C * cosSigma * (-1 + 2 * cos2SigmaM * cos2SigmaM)));
+            } while (Math.abs(lambda - lambdaP) > 1e-12 && --iterLimit > 0);
+
+            if (iterLimit == 0) return NaN; // 収束しない場合
+
+            var uSq = cosSqAlpha * (a * a - b * b) / (b * b);
+            var A = 1 + uSq / 16384 * (4096 + uSq * (-768 + uSq * (320 - 175 * uSq)));
+            var B = uSq / 1024 * (256 + uSq * (-128 + uSq * (74 - 47 * uSq)));
+            var deltaSigma = B * sinSigma * (cos2SigmaM + B / 4 * (cosSigma * (-1 + 2 * cos2SigmaM * cos2SigmaM) - 
+                            B / 6 * cos2SigmaM * (-3 + 4 * sinSigma * sinSigma) * (-3 + 4 * cos2SigmaM * cos2SigmaM)));
+
+            var s = b * A * (sigma - deltaSigma);
+
+            return s; // 最終的な距離 (meters)
         }
     </script>
 </body>
