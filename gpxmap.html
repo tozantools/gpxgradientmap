@@ -4,8 +4,8 @@
     <title>Gradient Based Polyline in Leaflet</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         body, html {
             height: 100%;
@@ -22,6 +22,14 @@
             left: 10px;
             z-index: 1000;
         }
+        .custom-attribution {
+            background: rgba(255, 255, 255, 0.9); /* 半透明の白 */
+            border-radius: 5px; /* 角の丸み */
+            box-shadow: 0 1px 5px rgba(0,0,0,0.4); /* 影の追加 */
+            margin: 10px; /* 余白 */
+            padding: 5px 10px; /* 内側の余白 */
+            font-size: 12px; /* フォントサイズ */
+        }
     </style>
 </head>
 <body>
@@ -30,9 +38,16 @@
     <script>
         var mymap = L.map('mapid').setView([36.3428, 137.6478], 6);
         // 国土地理院のタイルレイヤーを地図に追加
-        L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
-            attribution: '地図データ &copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>'
-        }).addTo(mymap);
+        L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png').addTo(mymap);
+
+        // カスタムattributionコントロールを作成
+        var customAttribution = L.control({position: 'topright'});
+        customAttribution.onAdd = function(map) {
+            var div = L.DomUtil.create('div', 'custom-attribution');
+            div.innerHTML = '<span>地図データ &copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a></span>';
+            return div;
+        };
+        customAttribution.addTo(mymap);
 
         // GPXファイルをアップロードするための関数
         function handleFileUpload(file) {
