@@ -7,53 +7,82 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+        }
         #mapid {
             width: 100vw; /* ビューポートの幅全体 */
             height: 100vh; /* ビューポートの高さ全体 */
             position: absolute;
         }
+        #gpx-file-input {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
     <div id="mapid"></div>
-    <input type="file" id="gpx-file-input" accept=".gpx" style="position: absolute; bottom: 10px; left: 10px; z-index: 1000;">
+    <input type="file" id="gpx-file-input" accept=".gpx">
     <script>
-        var mymap = L.map('mapid');
+        var mymap = L.map('mapid').setView([36.3428, 137.6478], 6);
         // 国土地理院のタイルレイヤーを地図に追加
         L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
             attribution: '地図データ &copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>'
         }).addTo(mymap);
 
+        // GPXファイルをアップロードするための関数
+        function handleFileUpload(file) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var parser = new DOMParser();
+                var doc = parser.parseFromString(e.target.result, "application/xml");
+                var trkpts = doc.querySelectorAll("trkpt");
+                var data = [];
+                trkpts.forEach(function(pt) {
+                    var lat = parseFloat(pt.getAttribute('lat'));
+                    var lon = parseFloat(pt.getAttribute('lon'));
+                    var ele = parseFloat(pt.querySelector('ele').textContent);
+                    data.push([lat, lon, ele]);
+                });
+
+                var latlngs = data.map(function(item) {
+                    return [item[0], item[1]]; // latとlonのみを抽出
+                });
+
+                if (latlngs.length > 0) {
+                    var polyline = L.polyline(latlngs);
+                    mymap.fitBounds(polyline.getBounds());
+                }
+                
+                var segments = calculateGradients(data);
+
+                segments.forEach(function(segment) {
+                    var color = getColorForGradient(segment.gradient);
+                    var latlngs = [[segment.start[0], segment.start[1]], [segment.end[0], segment.end[1]]];
+                    L.polyline(latlngs, {color: color}).addTo(mymap);
+                });
+            };
+            reader.readAsText(file);
+        }
+
+        // ファイルアップロードイベント
         document.getElementById('gpx-file-input').addEventListener('change', function(e) {
-            var file = e.target.files[0];
-            if (file) {
-                var reader = new FileReader();
-                reader.onload = function(e) {
-                    var parser = new DOMParser();
-                    var doc = parser.parseFromString(e.target.result, "application/xml");
-                    var trkpts = doc.querySelectorAll("trkpt");
-                    var data = [];
-                    trkpts.forEach(function(pt) {
-                        var lat = parseFloat(pt.getAttribute('lat'));
-                        var lon = parseFloat(pt.getAttribute('lon'));
-                        var ele = parseFloat(pt.querySelector('ele').textContent);
-                        data.push([lat, lon, ele]);
-                    });
+            handleFileUpload(e.target.files[0]);
+        });
 
-                    // 最初の地点を地図の中心に設定
-                    if (data.length > 0) {
-                        mymap.setView([data[0][0], data[0][1]], 13);
-                    }
-
-                    var segments = calculateGradients(data);
-
-                    segments.forEach(function(segment) {
-                        var color = getColorForGradient(segment.gradient);
-                        var latlngs = [[segment.start[0], segment.start[1]], [segment.end[0], segment.end[1]]];
-                        L.polyline(latlngs, {color: color}).addTo(mymap);
-                    });
-                };
-                reader.readAsText(file);
+        // ドラッグ&ドロップイベント
+        mymap.getContainer().addEventListener('dragover', function(e) {
+            e.preventDefault(); // デフォルトの挙動を防ぐ
+        });
+        mymap.getContainer().addEventListener('drop', function(e) {
+            e.preventDefault();
+            var file = e.dataTransfer.files[0];
+            if (file && file.type === "application/gpx+xml") {
+                handleFileUpload(file);
             }
         });
 
