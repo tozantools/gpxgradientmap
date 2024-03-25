@@ -39,7 +39,11 @@
     <script>
         var mymap = L.map('mapid').setView([36.3428, 137.6478], 6);
         // 国土地理院のタイルレイヤーを地図に追加
-        L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png').addTo(mymap);
+        var stdLayer = new L.TileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png');
+        var hillshadeLayer = new L.TileLayer('https://cyberjapandata.gsi.go.jp/xyz/hillshademap/{z}/{x}/{y}.png');
+        mymap.addLayer(stdLayer);
+
+        L.control.layers({"地理院地図": stdLayer, "陰影起伏図": hillshadeLayer}).addTo(mymap);
 
         // カスタムattributionコントロールを作成
         var customAttribution = L.control({position: 'topright'});
