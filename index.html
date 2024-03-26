@@ -37,7 +37,19 @@
     <div id="mapid"></div>
     <input type="file" id="gpx-file-input" accept=".gpx">
     <script>
-        var mymap = L.map('mapid').setView([36.3428, 137.6478], 6);
+        function getMapParams() {
+            var params = new URLSearchParams(window.location.search);
+            var coords = params.get('c') ? params.get('c').split(',') : [36.3428, 137.6478];
+            var zoom = params.get('z') ? parseInt(params.get('z'), 10) : 6;
+            return {
+                coords: coords.map(function(value) { return parseFloat(value); }),
+                zoom: zoom
+            };
+        }
+
+        var { coords, zoom } = getMapParams();
+        var [lat, lng] = coords;
+        var mymap = L.map('mapid').setView([lat, lng], zoom);
         // 国土地理院のタイルレイヤーを地図に追加
         var stdLayer = new L.TileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png');
         var hillshadeLayer = new L.TileLayer('https://cyberjapandata.gsi.go.jp/xyz/hillshademap/{z}/{x}/{y}.png');
